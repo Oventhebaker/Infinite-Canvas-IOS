@@ -1,5 +1,7 @@
 # infinite-canvas-ios
 
+**[▶ Live demo](https://oventhebaker.github.io/Infinite-Canvas-IOS/)**: try it on your iPhone (add `?fps` for a frame meter).
+
 A pannable, zoomable, optionally **endless** canvas for the web that actually
 behaves on **iPhone Safari** — one dependency-free file (`infinite-canvas.js`,
 ~400 lines) and a demo page.
@@ -53,7 +55,7 @@ it. Mark an element `data-ic-native` to give it back the browser's own touch
 handling (a scrollable panel), and `data-ic-tap` to make a non-link element
 tappable.
 
-Run the demo: serve the folder (`python3 -m http.server`) and open
+Run the demo locally: serve the folder (`python3 -m http.server`) and open
 `index.html` — add `?fps` to the address for a frame meter.
 
 ## The iOS Safari traps
