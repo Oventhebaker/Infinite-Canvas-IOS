@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infinite canvas — iPhone-friendly demo</title>
+<script>
+  // iOS: keep --vh equal to the real visible height (100vh on iOS is the
+  // height WITHOUT the toolbar). Set before the first paint and on resize.
+  (function () {
+    var set = function () { document.documentElement.style.setProperty('--vh', window.innerHeight + 'px'); };
+    set();
+    window.addEventListener('resize', set);
+  })();
+</script>
+<style>
+  /* iOS: a page one pixel shorter than the window, with nothing to scroll
+     and no rubber band, gives Safari no reason to move its toolbar. */
+  html, body {
+    margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none;
+    height: 100%; height: calc(var(--vh, 100%) - 1px);
+    background: #f6f4ef; color: #1b1b1b;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  }
+  #canvas { position: fixed; inset: 0; overflow: hidden; cursor: grab; }
+  #canvas:active { cursor: grabbing; }
+
+  .card {
+    display: flex; flex-direction: column; justify-content: flex-end;
+    box-sizing: border-box; padding: 18px; border-radius: 14px;
+    color: #fff; text-decoration: none;
+    /* No box-shadow on purpose. iOS: a blurred shadow redrawn on every
+       frame of a pan (it was on cards that grew as they neared the centre)
+       crashed iOS Safari. Flat colour is free to move. */
+  }
+  .card b { font-size: 44px; line-height: 1; font-weight: 700; }
+  .card span { font-size: 14px; opacity: 0.85; margin-top: 6px; }
+  .card img { -webkit-user-drag: none; }
+
+  .ui {
+    position: fixed; z-index: 10; display: flex; align-items: center; gap: 10px;
+    font-size: 13px;
+  }
+  .ui.top { top: 14px; left: 16px; right: 16px; justify-content: space-between; pointer-events: none; }
+  .ui.bottom { bottom: max(16px, env(safe-area-inset-bottom)); right: 16px; }
+  .ui button {
+    height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid #1b1b1b33;
+    background: #fffffff2; color: inherit; font: inherit; cursor: pointer;
+  }
+  #toast {
+    position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%);
+    background: #1b1b1b; color: #fff; padding: 8px 14px; border-radius: 18px; font-size: 13px;
+    opacity: 0; transition: opacity 200ms; pointer-events: none; z-index: 10;
+  }
+  #toast.on { opacity: 1; }
+  #fps { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <div id="canvas"></div>
+
+  <div class="ui top">
+    <strong>Infinite canvas</strong>
+    <span id="fps"></span>
+  </div>
+  <div class="ui bottom">
+    <button id="home" type="button">Back to centre</button>
+  </div>
+  <div id="toast"></div>
+
+  <script src="infinite-canvas.js"></script>
+  <script>
+    // One period of content: a 6 × 6 grid of cards. With `period`, it
+    // repeats in every direction forever.
+    const CELL = 400, N = 6, PERIOD = CELL * N;
+    const canvas = new InfiniteCanvas(document.getElementById('canvas'), {
+      period: { w: PERIOD, h: PERIOD },
+      x: PERIOD / 2, y: PERIOD / 2, zoom: 0.6,
+      // At 0.4 even a tall phone screen shows less than one period, so the
+      // seam where the content repeats never comes into view. Go lower and
+      // items fade as they switch copy at the screen's edge (seamFade).
+      minZoom: 0.4, maxZoom: 2,
+    });
+
+    for (let row = 0; row < N; row++) {
+      for (let col = 0; col < N; col++) {
+        const n = row * N + col + 1;
+        const card = document.createElement('a');
+        card.className = 'card';
+        card.href = '#card-' + n;
+        card.style.background = `hsl(${(n * 47) % 360} 55% 48%)`;
+        card.innerHTML = `<b>${n}</b><span>Tap me — a link inside the canvas</span>`;
+        // Links keep working: a tap clicks, a drag pans.
+        card.addEventListener('click', (e) => { e.preventDefault(); toast('Card ' + n); });
+        canvas.add(card, col * CELL + 60, row * CELL + 50, 280, 300);
+      }
+    }
+
+    document.getElementById('home').addEventListener('click', () => canvas.flyTo(PERIOD / 2, PERIOD / 2, 0.6));
+
+    const toastEl = document.getElementById('toast');
+    let toastTimer;
+    function toast(text) {
+      toastEl.textContent = text;
+      toastEl.classList.add('on');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('on'), 1200);
+    }
+
+    // Optional frame meter: add ?fps to the address.
+    if (/[?&]fps\b/.test(location.search)) {
+      const el = document.getElementById('fps');
+      let last = performance.now(), frames = [];
+      const loop = (t) => {
+        frames.push(t - last); last = t;
+        if (frames.length > 60) frames.shift();
+        const avg = frames.reduce((a, b) => a + b, 0) / frames.length;
+        el.textContent = Math.round(1000 / avg) + ' fps · worst ' + Math.round(Math.max(...frames)) + ' ms';
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    }
+  </script>
+</body>
+</html>
