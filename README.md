@@ -117,9 +117,12 @@ Each one cost us real time. Symptom → cause → what the code does.
    - A **blurred `box-shadow`** on elements that scale or fade on every
      frame of a pan. → No shadows on moving content on iOS (keep them for
      desktop if you like).
+   - **Hidden controls with `backdrop-filter`** — see trap 13. This was the
+     one that was still killing the page after the two fixes above.
    The iOS Simulator **does not reproduce these** (it has the Mac's memory);
-   only a real device does. We found the second one by publishing variants
-   of the page, each with one feature removed, and trying them on the phone.
+   only a real device does. Publishing variants of the page, each with one
+   feature removed, found the shadow but missed the real culprit: measure
+   first (see *Testing* below).
 
 10. **Stutter when many items move at once.** Changing `opacity` on whole
     columns of off-screen items every frame (a wrap-seam fade) made Safari
@@ -137,7 +140,57 @@ Each one cost us real time. Symptom → cause → what the code does.
     link menu; `-webkit-tap-highlight-color: transparent` removes the grey
     flash; `-webkit-user-drag: none` on images.
 
+13. **Something you can't see creates dozens of layers.** A dropped-in image
+    component carried two hidden "Replace" and "Edit" buttons on every image,
+    each with `backdrop-filter: blur()`, kept at `opacity: 0` and never used on
+    the live site. Each one got a compositing layer: 131 layers and 305 MB of
+    layers on the page, a crash at about 2150 MB (`per-process-limit`, iPhone 15
+    Pro Max) within 5–10 s of a fast pan at full zoom-out. → Use `display: none`
+    for controls that aren't available: **7 layers, 29 MB**, no more crash in
+    our tests, 50–60 fps at the worst moment. `opacity: 0` hides an element, it
+    doesn't remove its cost.
+
+14. **Your "never promoted" world gets a layer anyway.** A layer inside an
+    element forces that element to get one too ("Element has a 2D transform and
+    composited descendants"). So a big transformed world can end up composited
+    even with no `will-change` on it: ours reported 8167 × 8387 px composited
+    and 264 MB. Trap 9's rule isn't enough: also keep its descendants from being
+    promoted by accident.
+
+15. **Scaling items on every frame repaints their whole layer.** Items that grow
+    near the centre (a magnify effect) made the world repaint constantly: the
+    Layers tab counted 12,756 paints on it in one session, before trap 13's fix
+    too. → Give an item `will-change: transform` only while it is scaled, so
+    the compositor scales it without a repaint. The paint counter then climbed
+    much more slowly, but it's a trade: layer memory went from 29 to about
+    166 MB on that reading. Measure, and keep it to the few items that need it.
+
+16. **Lighter images and off-screen culling didn't save us.** We tried 360 px
+    images when zoomed out, and `display: none` for items far off screen: the
+    page still crashed. Limiting the zoom-out did stop it, which pointed at what
+    was on screen, not at image weight. Don't assume it's the images.
+
 ## Testing on iOS without going mad
+
+**When Safari kills the page, measure on the real iPhone first.** It tells you
+in minutes what variants take days to guess:
+
+- **Crash reports**, iPhone plugged in, no Developer Mode needed
+  (`brew install libimobiledevice`):
+  `idevicecrashreport -k -e ./reports`. Look in `JetsamEvent-*.ips` for
+  `com.apple.WebKit.WebContent` with `"reason": "per-process-limit"`; its
+  `rpages` × the page size (16 KB) is the memory it reached. Not every crash
+  writes a report, so no report proves nothing. `-k` keeps them on the phone.
+- **Web Inspector > Layers**: turn on Settings → Apps → Safari → Advanced → Web
+  Inspector, then in Safari on the Mac, Develop → your iPhone → the page. It
+  lists every layer with its memory, its paint count and why it was composited.
+  A counter that climbs while you only pan means something is repainting.
+- **No deploy needed:** serve the folder on your Mac and open
+  `http://<your Mac's IP>:8000` on the phone, on the same Wi-Fi.
+- A crash in two steps is typical: the page jumps back to its start with no
+  transition (Safari killed and reloaded it), then the second time you get
+  "A problem repeatedly occurred". A private tab can behave differently, and
+  an inspector attached slows the page, so don't judge fluidity with it open.
 
 - **The iOS Simulator** (Xcode → `xcrun simctl`) runs real WebKit: it
   reproduces the input bugs (1–5, 7, 8) faithfully. It does **not** enforce
