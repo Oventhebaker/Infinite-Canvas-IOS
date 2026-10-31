@@ -1,4 +1,4 @@
-# infinite-canvas-ios 1
+# infinite-canvas-ios
 
 <img width="360" height="663" alt="demo" src="https://github.com/user-attachments/assets/522efcb1-7b68-46ea-9874-96f99e873143" />
 
