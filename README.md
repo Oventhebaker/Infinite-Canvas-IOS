@@ -1,5 +1,7 @@
 # infinite-canvas-ios
 
+![demo](https://github.com/user-attachments/...)
+
 **[▶ Live demo](https://oventhebaker.github.io/Infinite-Canvas-IOS/)**: try it on your iPhone (add `?fps` for a frame meter).
 
 A pannable, zoomable, optionally **endless** canvas for the web that actually
