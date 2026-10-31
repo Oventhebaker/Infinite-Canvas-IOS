@@ -1,6 +1,6 @@
-# infinite-canvas-ios
+# infinite-canvas-ios 1
 
-![demo](https://github.com/user-attachments/...)
+<img width="360" height="663" alt="demo" src="https://github.com/user-attachments/assets/522efcb1-7b68-46ea-9874-96f99e873143" />
 
 **[▶ Live demo](https://oventhebaker.github.io/Infinite-Canvas-IOS/)**: try it on your iPhone (add `?fps` for a frame meter).
 
